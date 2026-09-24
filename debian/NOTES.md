@@ -42,14 +42,15 @@ easier.
     mit-scheme:native [amd64] | mit-scheme-svm:native [amd64],
     mit-scheme-svm:native [!amd64] | mit-scheme:native [!amd64],
 
-arm64 has a native Scheme but does not bootstrap from it yet. Before
-12.1-9 the aarch64 microcode restored the dynamic link with its type
-code still on after an interrupt (patch `0019-aarch64-dlink-mask`), and
-a native Scheme hosting a build died with SIGSEGV at a memory-layout
-dependent point -- under sbuild every time, in a login session never.
-12.1-9 fixes the microcode, but the buildd's host is the previous
-upload, so arm64 can only be listed like amd64 once a fixed
-`mit-scheme` is in the archive; then it should be.
+arm64 bootstraps from its native Scheme as of 12.1-10. Before 12.1-9 the
+aarch64 microcode restored the dynamic link with its type code still on
+after an interrupt (patch `0019-aarch64-dlink-mask`), and a native
+Scheme hosting a build died with SIGSEGV at a memory-layout dependent
+point -- under sbuild every time, in a login session never. 12.1-9 fixes
+the microcode; since a fixed `mit-scheme` is now in the archive for the
+buildd to build against, arm64 is listed alongside amd64 in
+Build-Depends. If an arm64 build ever fails in the host Scheme again,
+moving it back to the SVM line is the workaround.
 
 Building either can be switched off using build profiles:
 

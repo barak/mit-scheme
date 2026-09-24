@@ -2,12 +2,12 @@ Source: mit-scheme
 Section: lisp
 Maintainer: Barak A. Pearlmutter <bap@debian.org>
 Build-Depends: debhelper-compat (= 14),
-# Bootstrap from the native Scheme only on amd64.  arm64 has one too, but
-# it segfaults when used as the host of a cross compilation, which building
-# the SVM flavour from it requires; bootstrapping both flavours from the SVM
-# Scheme is slower but is the only arm64 build that has ever completed.
-		mit-scheme:native [amd64] | mit-scheme-svm:native [amd64],
-		mit-scheme-svm:native [!amd64] | mit-scheme:native [!amd64],
+# Bootstrap from the native Scheme where there is one; it is much faster
+# than the SVM.  arm64 could not until 12.1-9 fixed the aarch64 microcode
+# (patch 0019-aarch64-dlink-mask), and needed a fixed Scheme in the archive
+# to build against; that is now the case.
+		mit-scheme:native [amd64 arm64] | mit-scheme-svm:native [amd64 arm64],
+		mit-scheme-svm:native [!amd64 !arm64] | mit-scheme:native [!amd64 !arm64],
 		libssl-dev, libmhash-dev, libmcrypt-dev,
 		libgdbm-dev, libpq-dev,
 		libncurses-dev,

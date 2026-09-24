@@ -5,6 +5,9 @@ mit-scheme (12.1-10) UNRELEASED; urgency=medium
   * Cut the AUXDIR_NAME patch down to letting the environment choose the
     auxiliary directory name, and set it in debian/rules for both
     flavours instead of patching Debian's choice into configure.
+  * Bootstrap arm64 from the native Scheme rather than the SVM one, now
+    that 12.1-9's aarch64 microcode fix is in the archive for the buildd
+    to build against.
 
  -- Barak A. Pearlmutter <bap@debian.org>  Thu, 24 Sep 2026 15:36:24 +0100
 
