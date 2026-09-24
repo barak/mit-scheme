@@ -1,3 +1,10 @@
+mit-scheme (12.1-10) UNRELEASED; urgency=medium
+
+  * Desktop icon: add opaque white background for visibiliy. Inkscape
+    insisted on updating from 90 to 96 dpi.
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 24 Sep 2026 10:22:07 +0100
+
 mit-scheme (12.1-9) unstable; urgency=medium
 
   * Backport from upstream development branch: 32MB default heap on 32-bit;

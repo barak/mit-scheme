@@ -2,19 +2,19 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    width="289.93768"
    height="289.93768"
    id="svg2"
    version="1.1"
-   inkscape:version="0.48.4 r9939"
-   sodipodi:docname="mit-gnu-scheme.svg">
+   inkscape:version="1.4.3 (0d15f75042, 2025-12-25)"
+   sodipodi:docname="MIT_GNU_Scheme_Logo.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:dc="http://purl.org/dc/elements/1.1/">
   <defs
      id="defs4" />
   <sodipodi:namedview
@@ -24,16 +24,16 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="4"
-     inkscape:cx="130.85897"
-     inkscape:cy="121.20607"
+     inkscape:zoom="2.3"
+     inkscape:cx="131.08696"
+     inkscape:cy="161.30435"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
-     inkscape:window-width="1280"
-     inkscape:window-height="780"
-     inkscape:window-x="-4"
-     inkscape:window-y="-3"
+     inkscape:window-width="1920"
+     inkscape:window-height="1131"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
      inkscape:window-maximized="1"
      inkscape:object-nodes="false"
      inkscape:snap-smooth-nodes="false"
@@ -41,7 +41,10 @@
      fit-margin-top="20"
      fit-margin-left="20"
      fit-margin-right="20"
-     fit-margin-bottom="20" />
+     fit-margin-bottom="20"
+     inkscape:showpageshadow="2"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1" />
   <metadata
      id="metadata7">
     <rdf:RDF>
@@ -59,6 +62,16 @@
      inkscape:groupmode="layer"
      id="layer1"
      transform="translate(-18.549603,-255.80548)">
+    <path
+       sodipodi:type="arc"
+       style="fill:#ffffff;stroke:#000000;stroke-width:0.79445159;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;fill-opacity:1"
+       id="path3010"
+       sodipodi:cx="141.42136"
+       sodipodi:cy="420.3855"
+       sodipodi:rx="98.884468"
+       sodipodi:ry="98.884468"
+       d="m 240.30582,420.3855 c 0,54.61238 -44.27208,98.88447 -98.88446,98.88447 -54.612388,0 -98.884472,-44.27209 -98.884472,-98.88447 0,-54.61239 44.272084,-98.88447 98.884472,-98.88447 54.61238,0 98.88446,44.27208 98.88446,98.88447 z"
+       transform="matrix(1.2587299,0,0,1.2587299,-14.49285,-128.37748)" />
     <g
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
        id="text2996"
@@ -281,16 +294,15 @@
     </g>
     <text
        xml:space="preserve"
-       style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Nimbus Roman No9 L';-inkscape-font-specification:'Nimbus Roman No9 L';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="107.81197"
        y="369.00021"
-       id="text3997"
-       sodipodi:linespacing="125%"><tspan
+       id="text3997"><tspan
          sodipodi:role="line"
          id="tspan3999"
          x="107.81197"
          y="369.00021"
-         style="font-size:16px">(Y F) = (F (Y F))</tspan></text>
+         style="font-size:16px;line-height:1.25">(Y F) = (F (Y F))</tspan></text>
     <g
        style="font-size:24px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
        id="text4001">
@@ -306,13 +318,12 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccc" />
     <text
-       sodipodi:linespacing="125%"
        id="text4169"
        y="399.02515"
        x="155.29356"
-       style="font-size:12.12077999px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Nimbus Roman No9 L';-inkscape-font-specification:'Nimbus Roman No9 L';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
-         style="font-size:8.08052063px"
+         style="font-size:8.08052px;line-height:1.25"
          y="399.02515"
          x="155.29356"
          id="tspan4171"
@@ -333,16 +344,15 @@
        style="fill:none;stroke:#000000;stroke-width:1.01006508;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <text
        xml:space="preserve"
-       style="font-size:6.06039047px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Nimbus Roman No9 L';-inkscape-font-specification:'Nimbus Roman No9 L';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="180.00874"
        y="414.60709"
-       id="text4181"
-       sodipodi:linespacing="125%"><tspan
+       id="text4181"><tspan
          sodipodi:role="line"
          id="tspan4183"
          x="180.00874"
          y="414.60709"
-         style="font-size:4.04026031px">(Y F) = (F (Y F))</tspan></text>
+         style="font-size:4.04026px;line-height:1.25">(Y F) = (F (Y F))</tspan></text>
     <g
        style="font-size:6.06039047px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
        id="text4185">
@@ -358,13 +368,12 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccc" />
     <text
-       sodipodi:linespacing="125%"
        id="text4193"
        y="421.62961"
        x="191.38618"
-       style="font-size:3.12381101px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Nimbus Roman No9 L';-inkscape-font-specification:'Nimbus Roman No9 L';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
-         style="font-size:2.08254075px"
+         style="font-size:2.08254px;line-height:1.25"
          y="421.62961"
          x="191.38618"
          id="tspan4195"
@@ -385,16 +394,15 @@
        style="fill:none;stroke:#000000;stroke-width:0.26031759;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <text
        xml:space="preserve"
-       style="font-size:1.55697834px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Nimbus Roman No9 L';-inkscape-font-specification:'Nimbus Roman No9 L';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="197.95447"
        y="425.82547"
-       id="text4205"
-       sodipodi:linespacing="125%"><tspan
+       id="text4205"><tspan
          sodipodi:role="line"
          id="tspan4207"
          x="197.95447"
          y="425.82547"
-         style="font-size:1.03798556px">(Y F) = (F (Y F))</tspan></text>
+         style="font-size:1.03799px;line-height:1.25">(Y F) = (F (Y F))</tspan></text>
     <g
        style="font-size:1.55697834px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
        id="text4209">
@@ -410,13 +418,12 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccc" />
     <text
-       sodipodi:linespacing="125%"
        id="text4217"
        y="427.87085"
        x="201.08595"
-       style="font-size:0.7686348px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Nimbus Roman No9 L';-inkscape-font-specification:'Nimbus Roman No9 L';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
-         style="font-size:0.51242322px"
+         style="font-size:0.512423px;line-height:1.25"
          y="427.87085"
          x="201.08595"
          id="tspan4219"
@@ -437,16 +444,15 @@
        style="fill:none;stroke:#000000;stroke-width:0.0640529;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <text
        xml:space="preserve"
-       style="font-size:0.38810664px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Nimbus Roman No9 L';-inkscape-font-specification:'Nimbus Roman No9 L';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="202.64885"
        y="428.82535"
-       id="text4229"
-       sodipodi:linespacing="125%"><tspan
+       id="text4229"><tspan
          sodipodi:role="line"
          id="tspan4231"
          x="202.64885"
          y="428.82535"
-         style="font-size:0.25873777px">(Y F) = (F (Y F))</tspan></text>
+         style="font-size:0.258738px;line-height:1.25">(Y F) = (F (Y F))</tspan></text>
     <g
        style="font-size:0.38810664px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
        id="text4233">
@@ -462,13 +468,12 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccc" />
     <text
-       sodipodi:linespacing="125%"
        id="text4241"
        y="429.34482"
        x="203.45729"
-       style="font-size:0.18822911px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Nimbus Roman No9 L';-inkscape-font-specification:'Nimbus Roman No9 L';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
-         style="font-size:0.12548608px"
+         style="font-size:0.125486px;line-height:1.25"
          y="429.34482"
          x="203.45729"
          id="tspan4243"
@@ -489,16 +494,15 @@
        style="fill:none;stroke:#000000;stroke-width:0.01568576;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <text
        xml:space="preserve"
-       style="font-size:0.08842224px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Nimbus Roman No9 L';-inkscape-font-specification:'Nimbus Roman No9 L';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="203.86418"
        y="429.59842"
-       id="text4253"
-       sodipodi:linespacing="125%"><tspan
+       id="text4253"><tspan
          sodipodi:role="line"
          id="tspan4255"
          x="203.86418"
          y="429.59842"
-         style="font-size:0.05894816px">(Y F) = (F (Y F))</tspan></text>
+         style="font-size:0.0589482px;line-height:1.25">(Y F) = (F (Y F))</tspan></text>
     <g
        style="font-size:0.08842224px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
        id="text4257">
@@ -514,13 +518,12 @@
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccc" />
     <text
-       sodipodi:linespacing="125%"
        id="text4265"
        y="429.71896"
        x="204.06689"
-       style="font-size:0.04007544px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Nimbus Roman No9 L';-inkscape-font-specification:'Nimbus Roman No9 L';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        xml:space="preserve"><tspan
-         style="font-size:0.02671696px"
+         style="font-size:0.026717px;line-height:1.25"
          y="429.71896"
          x="204.06689"
          id="tspan4267"
@@ -541,16 +544,15 @@
        style="fill:none;stroke:#000000;stroke-width:0.00333962;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <text
        xml:space="preserve"
-       style="font-size:0.02003768px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:0%;font-family:'Nimbus Roman No9 L';-inkscape-font-specification:'Nimbus Roman No9 L';letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
        x="204.14943"
        y="429.76575"
-       id="text4277"
-       sodipodi:linespacing="125%"><tspan
+       id="text4277"><tspan
          sodipodi:role="line"
          id="tspan4279"
          x="204.14943"
          y="429.76575"
-         style="font-size:0.01335845px">(Y F) = (F (Y F))</tspan></text>
+         style="font-size:0.0133584px;line-height:1.25">(Y F) = (F (Y F))</tspan></text>
     <g
        style="font-size:0.02003768px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Roman No9 L;-inkscape-font-specification:Nimbus Roman No9 L"
        id="text4281">
@@ -565,16 +567,6 @@
        id="path4285"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="ccccccc" />
-    <path
-       sodipodi:type="arc"
-       style="fill:none;stroke:#000000;stroke-width:0.79445159;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
-       id="path3010"
-       sodipodi:cx="141.42136"
-       sodipodi:cy="420.3855"
-       sodipodi:rx="98.884468"
-       sodipodi:ry="98.884468"
-       d="m 240.30582,420.3855 c 0,54.61238 -44.27208,98.88447 -98.88446,98.88447 -54.612388,0 -98.884472,-44.27209 -98.884472,-98.88447 0,-54.61239 44.272084,-98.88447 98.884472,-98.88447 54.61238,0 98.88446,44.27208 98.88446,98.88447 z"
-       transform="matrix(1.2587299,0,0,1.2587299,-14.49285,-128.37748)" />
     <path
        sodipodi:type="arc"
        style="fill:#000000;fill-opacity:1;stroke:none"
