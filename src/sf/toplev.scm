@@ -139,6 +139,18 @@ USA.
 		      bin-path)))
 	    #f)))
 
+;;; The date and time stamped into every .bin below come from the wall
+;;; clock, which makes two builds of the same source differ.  Honour
+;;; SOURCE_DATE_EPOCH when it is set, as the reproducible-builds
+;;; specification asks: <https://reproducible-builds.org/specs/source-date-epoch/>.
+
+(define (sf/start-date)
+  (let* ((string (get-environment-variable "SOURCE_DATE_EPOCH"))
+	 (epoch (and string (string->number string))))
+    (if (and epoch (exact-nonnegative-integer? epoch))
+	(file-time->global-decoded-time epoch)
+	(get-decoded-time))))
+
 (define (sf/internal input-pathname bin-pathname spec-pathname
 		     environment declarations)
   spec-pathname				;ignored
@@ -146,7 +158,7 @@ USA.
       (string-append "Skip processing file " (->namestring input-pathname))
     (lambda ()
       (let ((do-it
-	     (let ((start-date (get-decoded-time)))
+	     (let ((start-date (sf/start-date)))
 	       (lambda ()
 		 (fasdump (make-scode-comment
 			   `((source-file . ,(->namestring input-pathname))

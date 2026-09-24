@@ -194,7 +194,9 @@ USA.
 		(maybe-open-file compiler:generate-lap-files?
 				 (pathname-new-type output-path "lap")
 		  (lambda (lap-port)
-		    (fluid-let ((*debugging-key* (random-bytevector 32)))
+		    (fluid-let ((*debugging-key*
+				 (compilation-debugging-key input-path
+							    output-path)))
 		      (compile-scode/file/hook input-path output-path
 			(lambda ()
 			  (compile-bin-file-2 scode inf-path rtl-port
@@ -241,6 +243,19 @@ USA.
 (define *compiler-input-pathname*)
 (define *compiler-output-pathname*)
 (define *debugging-key*)
+
+;;; The key ties a compiled file to its debugging-info file.  It used to
+;;; be (random-bytevector 32), so two builds of the same source produced
+;;; a different .com and .bci for every file and the tree could not be
+;;; reproducible.  Derive it from the names of the two files instead:
+;;; that is what identifies the compilation unit, it is what the wrapper
+;;; already records alongside the key, and it is stable from one build to
+;;; the next.  Note that hashing the *contents* of the input would not
+;;; be, because sf's output is not yet reproducible itself.
+
+(define (compilation-debugging-key input-path output-path)
+  (bytevector-append (md5-bytevector (string->utf8 (->namestring input-path)))
+		     (md5-bytevector (string->utf8 (->namestring output-path)))))
 (define *library-name*)
 
 (define (maybe-open-file open? pathname receiver)
