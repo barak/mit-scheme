@@ -873,15 +873,14 @@ typedef struct
 #endif
 
 #if defined(__linux__) || defined(__NetBSD__)
-#  if defined(__NetBSD__) && defined(__aarch64__)
-/* NetBSD/aarch64 doesn't provide _init.  Maybe we should just always
-   use __executable_start on NetBSD.  */
-#    define _init __executable_start
-#  endif
-   extern unsigned int _init;
+/* _init is a legacy ELF symbol that the newer ports do not provide at
+   all -- linking fails on loong64 with "undefined reference to `_init'".
+   __executable_start is supplied by the linker on every ELF target, and
+   is what the NetBSD/aarch64 case here already used.  */
+   extern unsigned int __executable_start;
    extern unsigned int etext;
 #  define ADDRESS_UCODE_P(addr)						\
-     ((((unsigned int *) (addr)) >= (&_init))				\
+     ((((unsigned int *) (addr)) >= (&__executable_start))		\
       && (((unsigned int *) (addr)) <= (&etext)))
 #endif
 
