@@ -48,11 +48,28 @@ USA.
 (define time-world-restored #f)
 (define-deferred *within-restore-window?* (make-unsettable-parameter #f))
 
+(define (band-save-time)
+  (let* ((string (get-environment-variable "SOURCE_DATE_EPOCH"))
+	 (epoch (and string (string->number string))))
+    (if (and epoch (exact-nonnegative-integer? epoch))
+	(file-time->global-decoded-time epoch)
+	(local-decoded-time))))
+
 (define (disk-save filename #!optional id)
   (let ((filename* (disk-save-filename filename))
 	(id (if (default-object? id) world-id id))
-	(time (local-decoded-time)))
+	(time (band-save-time)))
     (set! filename #f)
+    ;; Anything left in the heap that this process picked up from the
+    ;; clock or the entropy pool would be dumped along with it, making
+    ;; the band -- and everything later compiled by it -- differ from
+    ;; build to build.  A restored band re-reads none of this: the
+    ;; random source is given a fixed state here and randomized again
+    ;; below, once the dump is done.
+    (statistics-clear!)
+    (statistics-suspend!)
+    (set! time-world-restored #f)
+    (random-source-pseudo-randomize! default-random-source 0 0)
     (gc-clean)
     ((without-interrupts
       (lambda ()
@@ -76,6 +93,8 @@ USA.
 			      (error "Disk save failed!"))))
 			(continuation
 			 (lambda ()
+			   (statistics-reset!)
+			   (random-source-randomize! default-random-source)
 			   (set! time-world-saved time)
 			   (if (string? id) unspecific #f)))))))
 		 ((ucode-primitive set-fixed-objects-vector!) fixed-objects))))

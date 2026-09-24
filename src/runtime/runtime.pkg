@@ -2609,7 +2609,11 @@ USA.
 	  gc-timestamp
 	  gctime)
   (export (runtime gc-notification)
-	  last-statistic))
+	  last-statistic)
+  (export (runtime save/restore)
+	  statistics-clear!
+	  statistics-reset!
+	  statistics-suspend!))
 
 (define-package (runtime generic-i/o-port)
   (files "generic-io")

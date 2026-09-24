@@ -48,15 +48,15 @@ USA.
 
 (define (recorder/gc-start)
   (port/gc-start (console-i/o-port))
-  (set! this-gc-start-uctime (get-universal-time))
-  (set! this-gc-start-clock (real-time-clock))
-  (set! this-gc-start (process-time-clock))
+  (set! this-gc-start-uctime (if quiescent? 0 (get-universal-time)))
+  (set! this-gc-start-clock (if quiescent? 0 (real-time-clock)))
+  (set! this-gc-start (if quiescent? 0 (process-time-clock)))
   unspecific)
 
 (define (recorder/gc-finish ignored space-remaining)
   ignored
-  (let* ((end-time (process-time-clock))
-	 (end-time-clock (real-time-clock)))
+  (let* ((end-time (if quiescent? 0 (process-time-clock)))
+	 (end-time-clock (if quiescent? 0 (real-time-clock))))
     (increment-non-runtime! (- end-time this-gc-start))
     (statistics-flip this-gc-start end-time
 		     space-remaining
@@ -77,7 +77,35 @@ USA.
 (define (gc-timestamp)
   timestamp)
 
+;;; Dumping a band writes the whole heap, so a statistic recorded in
+;;; this process puts its clock readings into the band, and hence into
+;;; everything later compiled from it.  disk-save clears the history
+;;; and goes quiescent before it dumps, and resets afterwards; a
+;;; restored band resets through event:after-restore.
+
+(define (statistics-clear!)
+  ;; Like statistics-reset!, but reads no clock.
+  (set! timestamp (cons 1 (1+ (cdr timestamp))))
+  (set! total-gc-time 0)
+  (set! last-gc-start-clock #f)
+  (set! last-gc-end-clock 0)
+  (set! last-gc-start #f)
+  (set! last-gc-end 0)
+  (set! this-gc-start 0)
+  (set! this-gc-start-uctime 0)
+  (set! this-gc-start-clock 0)
+  (reset-recorder! '()))
+
+(define quiescent? #f)
+
+(define (statistics-suspend!)
+  ;; Collections still get recorded -- gc-notification wants a
+  ;; statistic to look at -- but with zeros where the clock readings
+  ;; would go.
+  (set! quiescent? #t))
+
 (define (statistics-reset!)
+  (set! quiescent? #f)
   (set! timestamp (cons 1 (1+ (cdr timestamp))))
   (set! total-gc-time 0)
   (set! last-gc-start-clock false)
