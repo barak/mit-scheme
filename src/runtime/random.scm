@@ -517,8 +517,20 @@ USA.
 (define (reset-default-random-source!)
   (random-source-randomize! default-random-source))
 
-(reset-default-random-source!)
-(seq:after-files-loaded 'add-action! reset-default-random-source!)
+(define (seed-default-random-source!)
+  ;; Not the entropy pool.  Whatever the cold load draws from this source
+  ;; -- the hash salts in comparator.scm, say -- is frozen into the band
+  ;; the load produces, so entropy here makes every build differ.
+  ;; Restoring a band does not reseed, so a band has always handed every
+  ;; process that runs it the same sequence; this only changes which one.
+  ;; (Open-coded: this runs before generic arithmetic is up.)
+  (let ((key (random-state-key default-random-source)))
+    (do ((i 0 (fix:+ i 1)))
+	((fix:>= i 32) unspecific)
+      (bytevector-u8-set! key i 0))))
+
+(seed-default-random-source!)
+(seq:after-files-loaded 'add-action! seed-default-random-source!)
 
 (define (finalize-random-state-type!)
   (named-structure/set-tag-description! random-state-tag
