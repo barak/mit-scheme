@@ -1,0 +1,40 @@
+From: "Barak A. Pearlmutter" <bap@debian.org>
+Date: Mon, 28 Sep 2026 06:20:00 +0000
+Subject: configure: do not make -Warray-bounds fatal
+
+The i386 back end addresses half its compiled-code hooks at negative
+offsets from Registers[], so that every hook fits in a byte offset;
+cmpintmd/i386.c explains this and sets "offset = -128".
+
+The storage is there: cmpint.c places "void * Regstart [32]"
+immediately before Registers[] in a single struct. But cmpintmd/i386.c
+sees only the "extern SCHEME_OBJECT Registers []" declaration, so gcc
+reasons about the bounds from that alone and rejects all 44 of them:
+
+  cmpintmd.c:250:4: error: array subscript -6 is outside array bounds of
+                    'SCHEME_OBJECT[536870911]' [-Werror=array-bounds]
+
+This is fatal as the microcode is built with -Werror, so the i386
+native build does not compile at all.
+
+So we demote it to a warning, following the logic and placement of
+-Wno-error=stringop-truncation. This does not make the access
+conforming as it *is* still outside the Registers[] object. Addressing
+it through the enclosing struct would be the real fix. This only stops
+gcc's detection of an out-of-bounds error from being fatal.
+---
+ src/microcode/configure.ac | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/microcode/configure.ac b/src/microcode/configure.ac
+index e95e70c..abfba51 100644
+--- a/src/microcode/configure.ac
++++ b/src/microcode/configure.ac
+@@ -262,6 +262,7 @@ if test x"${GCC}" = xyes; then
+ 	-Wwrite-strings \
+ 	\
+ 	-Wno-error=stringop-truncation \
++	-Wno-error=array-bounds \
+ 	; do
+ 	AC_MSG_CHECKING([for compiler $flag])
+ 	SAVED_CFLAGS=${CFLAGS}

@@ -14,7 +14,7 @@ and use update-alternatives for `/usr/bin/mit-scheme`, native being
 higher priority.
 
 The native code back-end requires upstream to port to the instruction
-set. Currently only amd64 and arm64 are supported.
+set. Currently amd64, arm64, and i386 (with a fix) are supported.
 
 The bytecode system, although portable, must still be bootstrapped
 onto each new combination of word length (32/64-bit), endianity, and
@@ -23,34 +23,23 @@ bootstrapped onto both 32/64-bit, little endian, heap-in-low-memory.
 
 Here is what is currently packaged:
 
-| Package          | Back end     | Architecture                             |
-|------------------|--------------|------------------------------------------|
-| `mit-scheme`     | native code  | amd64 arm64                              |
-| `mit-scheme-svm` | SVM bytecode | amd64 arm64 i386 ppc64el riscv64 loong64 |
+| Package          | Back end     | Architecture                                 |
+|------------------|--------------|----------------------------------------------|
+| `mit-scheme`     | native code  | amd64 arm64 i386                             |
+| `mit-scheme-svm` | SVM bytecode | amd64 arm64 i386 ppc64el riscv64 loong64 x32 |
 
-(Reverse dependency note: `scmutils` is the only package depending on
-`mit-scheme`. It installs native code `.com` files into
-`/usr/lib/<triplet>/mit-scheme` so requires the native code back-end.)
+Note: for debian-ports architectures, bootstrap binary uploads go to
+ftp.debian-ports rather than the main archive.
+
+Note: `scmutils` is the only package depending on `mit-scheme`. It
+installs native code `.com` files into `/usr/lib/<triplet>/mit-scheme`
+so requires the native code back-end.
 
 The build can bootstrap from either mit-scheme:native or
-mit-scheme-svm:native. The former is preferred for efficiency, and
-therefore the build dependency is set up to use that on architectures
-where it is available. However alternatives are given to allow
-bootstrapping by seeding with either, to make ports and new version
-easier.
-
-    mit-scheme:native [amd64] | mit-scheme-svm:native [amd64],
-    mit-scheme-svm:native [!amd64] | mit-scheme:native [!amd64],
-
-arm64 bootstraps from its native Scheme as of 12.1-10. Before 12.1-9 the
-aarch64 microcode restored the dynamic link with its type code still on
-after an interrupt (patch `0019-aarch64-dlink-mask`), and a native
-Scheme hosting a build died with SIGSEGV at a memory-layout dependent
-point -- under sbuild every time, in a login session never. 12.1-9 fixes
-the microcode; since a fixed `mit-scheme` is now in the archive for the
-buildd to build against, arm64 is listed alongside amd64 in
-Build-Depends. If an arm64 build ever fails in the host Scheme again,
-moving it back to the SVM line is the workaround.
+mit-scheme-svm:native. The former is much faster, so the build
+dependency is set up to use that on architectures where it is
+available. However alternatives are given to allow bootstrapping by
+seeding with either, to make ports and new versions easier.
 
 Building either can be switched off using build profiles:
 
@@ -60,8 +49,8 @@ DEB_BUILD_PROFILES=pkg.mit-scheme.nonative dpkg-buildpackage
 ```
 
 `debian/rules` figures out which flavours can be built from
-`dh_listpackages`, making `debian/control` the single source of truth
-for which architectures have native code back-ends.
+`dh_listpackages`, making `debian/control` the SPOT for which
+architectures have native code back-ends.
 
 ## Architecture names
 
@@ -74,21 +63,17 @@ interpreter `mit-scheme-$ARCH-$VERSION`, and the `mit-scheme-$ARCH`
 symlink the alternatives point at. `postinst`/`prerm` repeat the
 mapping to work it out from `$DPKG_MAINTSCRIPT_ARCH` at run time.
 
-Adding an architecture means an entry in each of those, plus the
-`Architecture` field in `debian/control`, plus the corresponding list
-of architectures in Build-depends:.
+Adding an architecture requires:
+- add an entry in each of those mapping tables
+- add to `Architecture` field(s) in `debian/control`
+- if native back-end, add to list of architectures in Build-depends
 
 Note `src/microcode/confshared.h` refuses to compile without a machine
-type for the host. It recognises i386, arm, aarch64, powerpc, powerpc64
-and x86_64 upstream; -9 adds riscv64 and loong64, which need nothing but
-a machine type and `HEAP_IN_LOW_MEMORY` because they have no native back
-end. s390x and mips64el still have none, and s390x would additionally
-need a big-endian band (`svm1-64be`) to bootstrap from. All the supported
-architectures are little-endian.
+type for the host.
 
-A new port also wants `uxtrap.h`'s `__executable_start` fix: the legacy
-`_init` symbol it used to reference is absent on the newer ports, and
-the microcode does not link without it.
+A new port also needs `uxtrap.h`'s `__executable_start` fix: the
+legacy `_init` symbol it used to reference is absent on the newer
+ports, and the microcode does not link without it.
 
 ## Cross-compiling
 
@@ -102,30 +87,32 @@ its `microcode-id/compiled-code-type` and passes
 
 ## Bootstrapping a new architecture
 
-MIT/GNU Scheme's compiler is written in Scheme, so the build needs a
-Scheme, and a new architecture has none. Note also that a dpkg cross
-build cannot help: the build must *run* the Scheme it just built, both
-to dump the heap bands and in every plugin's `configure`, so the build
-machine has to execute the target architecture's binaries.
+MIT/GNU Scheme's compiler is written in MIT/GNU Scheme, so the build
+needs a running MIT/GNU Scheme, and a new architecture doesn't have
+one. A dpkg cross build cannot help: the build must *run* the Scheme
+it just built, both to dump the heap bands and in every plugin's
+`configure`, so the build machine has to execute the target
+architecture's binaries.
 
-There are two ways around it.
+There are two ways around this.
 
 ### Prebuilt bands (branch `debian-bootstrap`)
 
 The SVM executes bytecode rather than machine code, so a saved band is
-portable between machines that agree about object representation, while the
-microcode that runs it is C and is compiled from this package's own source.
-The `debian-bootstrap` branch carries such libraries in
-`debian/prebuilt/svm1-<bits><endian>/`.
+portable between machines that agree about object representation,
+while the microcode that runs it is C and is compiled from this
+package's own source. The `debian-bootstrap` branch carries such
+libraries in `debian/prebuilt/svm1-<bits><endian>/`.
 
-**Portable across what, exactly.** Not simply word size and byte order.
-`src/microcode/object.h` branches on `HEAP_IN_LOW_MEMORY`, which selects
-whether a Scheme object holds an absolute address or a base-relative one, so
-it changes the representation of every object in a saved heap; a band can
-only be loaded by a microcode that agrees. amd64, arm64, i386 and ppc64el
-all define it, which is why one amd64-built 64-bit band serves amd64, arm64
-and ppc64el. `__arm__` does not, so armhf can load neither a band nor FASL
-files produced anywhere else:
+**Portable across what, exactly.** Not simply word size and byte
+order. `src/microcode/object.h` branches on `HEAP_IN_LOW_MEMORY`,
+which selects whether a Scheme object holds an absolute address or a
+base-relative one, so it changes the representation of every object in
+a saved heap; a band can only be loaded by a microcode that agrees.
+amd64, arm64, i386 and ppc64el all define it, which is why one
+amd64-built 64-bit band serves amd64, arm64 and ppc64el. `__arm__`
+does not, so armhf can load neither a band nor FASL files produced
+anywhere else:
 
     Pointer out of range: 0x40a211b8
     Error code 0x18 (fasl-file-bad-data).
@@ -163,7 +150,7 @@ find debian/prebuilt -type f | sort > debian/source/include-binaries
 git add -f debian/prebuilt debian/source/include-binaries
 ```
 
-A complete installed library is wanted, not a hand-picked subset. A
+A complete installed library is required, not a hand-picked subset. A
 band plus the `.pkd` files gets a long way and then fails with
 `Unbound variable: ucode-primitive`, because the stage-0 Scheme ends
 up pointed at a source tree rather than at a library.
@@ -173,11 +160,11 @@ up pointed at a source tree rather than at a library.
 Alternatively, build the first binary for the new architecture
 yourself and have it bootstrapped into the archive; ordinary buildd
 builds take over afterwards. Seed from upstream's own SVM
-distribution, which needs no existing Scheme:
+distribution, which does not require an existing MIT/GNU Scheme:
 
     https://ftp.gnu.org/gnu/mit-scheme/stable.pkg/$VERSION/mit-scheme-$VERSION-svm1-64le.tar.gz
 
-It carries `src/.native-release-marker`, which makes `configure` skip
+It includes `src/.native-release-marker`, which makes `configure` skip
 the Scheme check and build only the microcode. **Apply
 `debian/patches/*chacha*` to it first** — every upstream 12.1 tarball
 has the unpatched `chacha.i` and dies on current toolchains with
@@ -203,8 +190,7 @@ shipped such a tarball, and `make liarc-dist` fails in 12.1 at
 
 ## Reproducibility
 
-Nothing in the Scheme parts of the build was reproducible before -9.
-Patches 0022-0025 fix four causes:
+A set of patches address a bunch of reproducibility issues.
 
 * the compiler gave every file a random 32-byte `*debugging-key*`;
 * `sf` stamped every `.bin` with the wall clock;
@@ -240,8 +226,8 @@ once a Scheme with patch 0023 is the one in the archive; the
 `mit-scheme-svm` tree is compiled by the Scheme this build just made,
 and is reproducible now.
 
-To test, without a full double build: build `src` in place, then dump a
-band twice and compare.
+To test, without a full double build: build `src` in place, then dump
+a band twice and compare.
 
 ```sh
 cd src && autoreconf --install && ./configure && make

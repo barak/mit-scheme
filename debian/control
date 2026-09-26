@@ -2,10 +2,9 @@ Source: mit-scheme
 Section: lisp
 Maintainer: Barak A. Pearlmutter <bap@debian.org>
 Build-Depends: debhelper-compat (= 14),
-# Bootstrap from the native Scheme where there is one; it is much faster
-# than the SVM.  arm64 could not until 12.1-9 fixed the aarch64 microcode
-# (patch 0019-aarch64-dlink-mask), and needed a fixed Scheme in the archive
-# to build against; that is now the case.
+# Bootstrap from the native Scheme where there is one; it is much
+# faster than the SVM. Add architectures to this list when they have a
+# native back-end (mit-scheme:arch binary package) in sid.
 		mit-scheme:native [amd64 arm64] | mit-scheme-svm:native [amd64 arm64],
 		mit-scheme-svm:native [!amd64 !arm64] | mit-scheme:native [!amd64 !arm64],
 		libssl-dev, libmhash-dev, libmcrypt-dev,
@@ -22,7 +21,9 @@ Vcs-Git: https://salsa.debian.org/debian/mit-scheme.git
 Vcs-Browser: https://salsa.debian.org/debian/mit-scheme
 
 Package: mit-scheme
-Architecture: amd64 arm64
+# Architectures that have native back-end support. Might be built on the
+# autobuilders using either the native or the SVM back-end.
+Architecture: amd64 arm64 i386
 Multi-Arch: same
 Build-Profiles: <!pkg.mit-scheme.nonative>
 Provides: mit-scheme-interpreter
@@ -39,7 +40,7 @@ Description: MIT/GNU Scheme development environment
 
 Package: mit-scheme-dbg
 Section: debug
-Architecture: amd64 arm64
+Architecture: amd64 arm64 i386
 Multi-Arch: same
 Build-Profiles: <!pkg.mit-scheme.nonative>
 Depends: mit-scheme (= ${binary:Version})
@@ -57,13 +58,11 @@ Description: MIT/GNU Scheme debugging files
  internals while you are debugging.
 
 Package: mit-scheme-svm
-# The architectures that can actually run this.  The limit is
-# src/microcode/confshared.h, which refuses to compile without a machine
-# type for the host: riscv64 and loong64 gained one in -9, s390x and
-# mips64el still have none.  armhf has one but does not define
-# HEAP_IN_LOW_MEMORY, so it can load neither a band nor FASL files built
-# anywhere else and cannot be bootstrapped; see debian/NOTES.md.
-Architecture: amd64 arm64 i386 ppc64el riscv64 loong64
+# Architectures with bytecode back-end (SVM) support. This is in
+# src/microcode/confshared.h, which refuses to compile without a
+# machine type for the host. Requires binary upload when first added.
+# See debian/NOTES.md.
+Architecture: amd64 arm64 i386 ppc64el riscv64 loong64 x32
 Build-Profiles: <!pkg.mit-scheme.nosvm>
 Provides: mit-scheme-interpreter
 Recommends: media-types

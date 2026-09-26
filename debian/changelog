@@ -1,3 +1,15 @@
+mit-scheme (12.1-11) unstable; urgency=medium
+
+  * Bootstrap i386 native from i386 svm. The i386 microcode did not
+    compile because its back end deliberately addresses half the
+    compiled-code hooks at negative offsets from Registers[],
+    which -Warray-bounds detects, and the -Werror makes that fatal. So add
+    a patch to demote that warning, as upstream already does
+    for -Wstringop-truncation.
+  * Bootstrap x32 svm
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Sat, 26 Sep 2026 11:42:17 +0100
+
 mit-scheme (12.1-10) unstable; urgency=medium
 
   * Desktop icon: add opaque white background for visibiliy. Inkscape
