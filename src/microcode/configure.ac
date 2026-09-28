@@ -260,6 +260,7 @@ if test x"${GCC}" = xyes; then
 	-Wwrite-strings \
 	\
 	-Wno-error=stringop-truncation \
+	-Wno-error=array-bounds \
 	; do
 	AC_MSG_CHECKING([for compiler $flag])
 	SAVED_CFLAGS=${CFLAGS}
