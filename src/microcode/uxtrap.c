@@ -373,8 +373,8 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
       new_sp = stack_pointer;
       /* Free already set by svm_export_instruction_pointer. */
 #  else
-      new_sp = ((SCHEME_OBJECT *) (SIGCONTEXT_SCHSP (scp)));
-      Free = ((SCHEME_OBJECT *) (SIGCONTEXT_RFREE (scp)));
+      new_sp = ((SCHEME_OBJECT *) ((uintptr_t) (SIGCONTEXT_SCHSP (scp))));
+      Free = ((SCHEME_OBJECT *) ((uintptr_t) (SIGCONTEXT_RFREE (scp))));
 #  endif
 
       SET_RECOVERY_INFO
@@ -393,8 +393,8 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
 
     case pcl_builtin:
 #ifdef CC_SUPPORT_P
-      new_sp = ((SCHEME_OBJECT *) (SIGCONTEXT_SCHSP (scp)));
-      Free = ((SCHEME_OBJECT *) (SIGCONTEXT_RFREE (scp)));
+      new_sp = ((SCHEME_OBJECT *) ((uintptr_t) (SIGCONTEXT_SCHSP (scp))));
+      Free = ((SCHEME_OBJECT *) ((uintptr_t) (SIGCONTEXT_RFREE (scp))));
       SET_RECOVERY_INFO (STATE_BUILTIN, (ULONG_TO_FIXNUM (index)), UNSPECIFIC);
       break;
 #endif
