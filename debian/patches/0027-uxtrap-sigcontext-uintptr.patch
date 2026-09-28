@@ -1,0 +1,46 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Mon, 28 Sep 2026 12:35:22 +0100
+Subject: uxtrap.c: cast sigcontext registers through uintptr_t
+Forwarded: yes
+
+On Linux the registers in a signal context are greg_t, which is 64-bit
+on every x86-64 kernel ABI -- including x32, where a pointer is 32 bits.
+Casting one straight to SCHEME_OBJECT * is then a narrowing cast between
+an integer and a pointer, which gcc rejects:
+
+  uxtrap.c:396:17: error: cast to pointer from integer of different size
+                  [-Werror=int-to-pointer-cast]
+
+fatal under the microcode's -Werror, so x32 does not compile at all.
+Go through uintptr_t: a no-op where the two already agree, and on x32
+the truncation is what is wanted, addresses there being 32 bits.
+---
+ src/microcode/uxtrap.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/src/microcode/uxtrap.c b/src/microcode/uxtrap.c
+index 48cecf1..8c71315 100644
+--- a/src/microcode/uxtrap.c
++++ b/src/microcode/uxtrap.c
+@@ -373,8 +373,8 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
+       new_sp = stack_pointer;
+       /* Free already set by svm_export_instruction_pointer. */
+ #  else
+-      new_sp = ((SCHEME_OBJECT *) (SIGCONTEXT_SCHSP (scp)));
+-      Free = ((SCHEME_OBJECT *) (SIGCONTEXT_RFREE (scp)));
++      new_sp = ((SCHEME_OBJECT *) ((uintptr_t) (SIGCONTEXT_SCHSP (scp))));
++      Free = ((SCHEME_OBJECT *) ((uintptr_t) (SIGCONTEXT_RFREE (scp))));
+ #  endif
+ 
+       SET_RECOVERY_INFO
+@@ -393,8 +393,8 @@ continue_from_trap (int signo, SIGINFO_T info, SIGCONTEXT_T * scp)
+ 
+     case pcl_builtin:
+ #ifdef CC_SUPPORT_P
+-      new_sp = ((SCHEME_OBJECT *) (SIGCONTEXT_SCHSP (scp)));
+-      Free = ((SCHEME_OBJECT *) (SIGCONTEXT_RFREE (scp)));
++      new_sp = ((SCHEME_OBJECT *) ((uintptr_t) (SIGCONTEXT_SCHSP (scp))));
++      Free = ((SCHEME_OBJECT *) ((uintptr_t) (SIGCONTEXT_RFREE (scp))));
+       SET_RECOVERY_INFO (STATE_BUILTIN, (ULONG_TO_FIXNUM (index)), UNSPECIFIC);
+       break;
+ #endif

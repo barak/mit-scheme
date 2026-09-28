@@ -1,3 +1,12 @@
+mit-scheme (12.1-12) unstable; urgency=medium
+
+  * Fix for x32: cast signal-context registers through uintptr_t in
+    uxtrap.c. They are greg_t, 64-bit on every x86-64 kernel ABI, so on
+    x32, where a pointer is 32 bits, casting one straight to a pointer is
+    fatal under -Werror and the microcode does not compile.
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Mon, 28 Sep 2026 12:36:04 +0100
+
 mit-scheme (12.1-11) unstable; urgency=medium
 
   * Bootstrap i386 native from i386 svm. The i386 microcode did not
