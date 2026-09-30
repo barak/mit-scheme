@@ -1,3 +1,9 @@
+mit-scheme (12.1-13) UNRELEASED; urgency=medium
+
+  * Fix declaration mismatches detected by LTO (closes: #1149534)
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Wed, 30 Sep 2026 17:02:20 +0100
+
 mit-scheme (12.1-12) unstable; urgency=medium
 
   * Fix for x32: cast signal-context registers through uintptr_t in

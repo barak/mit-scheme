@@ -1,0 +1,188 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Wed, 30 Sep 2026 17:01:36 +0100
+Subject: inconsistent declarations
+Forwarded: yes
+
+An LTO compile (link-time global optimization of C code) reveals three
+inconsistent declarations, meaning an inconsistency between distinct
+translation units. Two of these are fatal, the other just a warning,
+due to compiler options in effect at the time.
+
+  tterm.c:72:15: error: type of 'tparam' does not match original
+                 declaration [-Werror=lto-type-mismatch]
+  sysprim.c:37:13: error: type of 'OS_set_trap_state' does not match
+                   original declaration [-Werror=lto-type-mismatch]
+  x11-shim.h:159:13: warning: type of 'x_store_colors' does not match
+                     original declaration [-Wlto-type-mismatch]
+
+Details:
+
+tterm.c declared tparam as (const char *, void *, int, ...), which is
+GNU termcap's signature, but the tparam actually linked is from
+terminfo.c, which takes twelve fixed parameters and forwards nine to
+tparm. (Note that ncurses does not export a tparam of its own.) The
+call passed seven arguments, so five of tparm's nine were whatever
+happened to be in the argument registers. Fix by declaring it as
+defined and pass zeros.
+
+sysprim.c declared OS_set_trap_state as (long) returning long;
+uxtrap.c and nttrap.c define it over enum trap_state. The correct
+prototype was already in uxtrap.h and nttrap.h, which sysprim.c cannot
+include, being portable: hence the hand-written one. Fix by moving the
+enum and the prototype to ostop.h, which is portable, already contains
+the other OS_ entry points, and is already #included by sysprim.c. The
+two platform headers will get the declaration from there.
+
+x11color.c defined x_store_colors over (unsigned int *, unsigned int)
+where x11.cdecl, and thus the generated x11-shim.h, read (* int) and
+ulong. The plugins are not built with -Werror so this only generated a
+warning, but the caller passes a 64-bit count and callee expects a
+32-bit count. Fix by matching the definition to the declared
+interface, keeping the pixel value zero-extended.
+---
+ src/microcode/nttrap.h  | 13 +------------
+ src/microcode/ostop.h   | 13 +++++++++++++
+ src/microcode/sysprim.c |  1 -
+ src/microcode/tterm.c   |  6 ++++--
+ src/microcode/uxtrap.h  | 13 +------------
+ src/x11/x11color.c      |  8 ++++----
+ 6 files changed, 23 insertions(+), 31 deletions(-)
+
+diff --git a/src/microcode/nttrap.h b/src/microcode/nttrap.h
+index f22f249..9e85c2c 100644
+--- a/src/microcode/nttrap.h
++++ b/src/microcode/nttrap.h
+@@ -28,17 +28,6 @@ USA.
+ #ifndef SCM_NTTRAP_H
+ #define SCM_NTTRAP_H
+ 
+-enum trap_state
+-{
+-  trap_state_trapped,
+-  trap_state_exit,
+-  trap_state_suspend,
+-  trap_state_query,
+-  trap_state_recover,
+-  trap_state_exitting_soft,
+-  trap_state_exitting_hard
+-};
+-
+-extern enum trap_state OS_set_trap_state (enum trap_state state);
++#include "ostop.h"
+ 
+ #endif /* SCM_NTTRAP_H */
+diff --git a/src/microcode/ostop.h b/src/microcode/ostop.h
+index 9094b1b..ca77888 100644
+--- a/src/microcode/ostop.h
++++ b/src/microcode/ostop.h
+@@ -44,4 +44,17 @@ extern void OS_expect_sequential_access (void *start, void *end);
+ extern void OS_expect_normal_access (void *start, void *end);
+ extern void OS_free_pages (void *start, void *end);
+ 
++enum trap_state
++{
++  trap_state_trapped,
++  trap_state_exit,
++  trap_state_suspend,
++  trap_state_query,
++  trap_state_recover,
++  trap_state_exitting_soft,
++  trap_state_exitting_hard
++};
++
++extern enum trap_state OS_set_trap_state (enum trap_state state);
++
+ #endif /* SCM_OSTOP_H */
+diff --git a/src/microcode/sysprim.c b/src/microcode/sysprim.c
+index 94add26..e134687 100644
+--- a/src/microcode/sysprim.c
++++ b/src/microcode/sysprim.c
+@@ -34,7 +34,6 @@ USA.
+ #include "ostty.h"
+ #include "ostop.h"
+ 
+-extern long OS_set_trap_state (long);
+ extern double arg_flonum (int);
+ 
+ /* Pretty random primitives */
+diff --git a/src/microcode/tterm.c b/src/microcode/tterm.c
+index 56d125c..a3bd094 100644
+--- a/src/microcode/tterm.c
++++ b/src/microcode/tterm.c
+@@ -69,7 +69,8 @@ USA.
+    extern speed_t ospeed;
+ #endif
+ 
+-extern char * tparam (const char *, void *, int, ...);
++extern char * tparam (const char *, char *, int,
++		      int, int, int, int, int, int, int, int, int);
+ 
+ #ifndef TERMCAP_BUFFER_SIZE
+ #define TERMCAP_BUFFER_SIZE 2048
+@@ -156,7 +157,8 @@ DEFINE_PRIMITIVE ("TERMCAP-PARAM-STRING", Prim_termcap_param_string, 5, 5, 0)
+ 		 (arg_nonnegative_integer (2)),
+ 		 (arg_nonnegative_integer (3)),
+ 		 (arg_nonnegative_integer (4)),
+-		 (arg_nonnegative_integer (5))));
++		 (arg_nonnegative_integer (5)),
++		 0, 0, 0, 0, 0));
+     if ((env . string_pointer) == 0)
+       error_external_return ();
+     string = (char_pointer_to_string (env . string_pointer));
+diff --git a/src/microcode/uxtrap.h b/src/microcode/uxtrap.h
+index 628d56c..670a4d0 100644
+--- a/src/microcode/uxtrap.h
++++ b/src/microcode/uxtrap.h
+@@ -29,6 +29,7 @@ USA.
+ #define SCM_UXTRAP_H
+ 
+ #include "os.h"
++#include "ostop.h"
+ 
+ /* Machine/OS-dependent section (long) */
+ 
+@@ -890,19 +891,7 @@ typedef struct
+ 
+ /* Machine/OS-independent section */
+ 
+-enum trap_state
+-{
+-  trap_state_trapped,
+-  trap_state_exit,
+-  trap_state_suspend,
+-  trap_state_query,
+-  trap_state_recover,
+-  trap_state_exitting_soft,
+-  trap_state_exitting_hard
+-};
+-
+ extern void UX_initialize_trap_recovery (void);
+-extern enum trap_state OS_set_trap_state (enum trap_state state);
+ extern void hard_reset (SIGCONTEXT_T * scp);
+ extern void soft_reset (void);
+ extern void trap_handler
+diff --git a/src/x11/x11color.c b/src/x11/x11color.c
+index 371db61..ef5f72f 100644
+--- a/src/x11/x11color.c
++++ b/src/x11/x11color.c
+@@ -130,16 +130,16 @@ x_store_color (struct xcolormap * xcm,
+ 
+ void
+ x_store_colors (struct xcolormap * xcm,
+-		unsigned int * color_vector,
+-		unsigned int n_colors)
++		int * color_vector,
++		unsigned long n_colors)
+ {
+   XColor * colors = malloc (n_colors * (sizeof (XColor)));
+-  unsigned int * vector_scan = color_vector;
++  int * vector_scan = color_vector;
+   XColor * colors_scan = colors;
+   XColor * colors_end = (colors + n_colors);
+   while (colors_scan < colors_end)
+     {
+-      (colors_scan -> pixel) = (*vector_scan++);
++      (colors_scan -> pixel) = ((unsigned int) (*vector_scan++));
+       (colors_scan -> flags) = 0;
+       {
+ 	int red = *vector_scan++;
