@@ -1,8 +1,11 @@
-mit-scheme (12.1-13) UNRELEASED; urgency=medium
+mit-scheme (12.1-13) unstable; urgency=medium
 
   * Fix declaration mismatches detected by LTO (closes: #1149534)
+  * Add debian/BENCHMARKS.md and debian/src/benchmarks/, measuring what
+    LTO is worth here: about 10% on interpreted code, 2% on compiled
+    code, and 1-2ms more startup. Not a strong case for turning it on.
 
- -- Barak A. Pearlmutter <bap@debian.org>  Wed, 30 Sep 2026 17:02:20 +0100
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 01 Oct 2026 10:46:34 +0100
 
 mit-scheme (12.1-12) unstable; urgency=medium
 

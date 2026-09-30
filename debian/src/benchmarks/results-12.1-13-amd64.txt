@@ -1,0 +1,86 @@
+nolto native startup - 18 18
+nolto native interp fib 97. 97.7 10
+nolto native interp tak 163.33333333333334 163.83333333333334 6
+nolto native interp nqueens 60.625 61. 16
+nolto native interp bignum 17.19298245614035 17.280701754385966 57
+nolto native interp flonum 485. 486.5 2
+nolto native interp string 460. 458.5 2
+nolto native interp list 202. 202.2 5
+nolto native interp vector 1370. 1366. 1
+nolto native interp alloc 680. 675. 1
+nolto native compile - 33.793103448275865 34. 29
+nolto native compiled fib 1.0548523206751055 1.0601265822784811 948
+nolto native compiled tak 1.596638655462185 1.6016806722689076 595
+nolto native compiled nqueens .5969230769230769 .6 1625
+nolto native compiled bignum 15.625 15.6875 64
+nolto native compiled flonum 20.638297872340427 20.617021276595743 47
+nolto native compiled string 370. 370.3333333333333 3
+nolto native compiled list 171.66666666666666 172. 6
+nolto native compiled vector 66.66666666666667 66.93333333333334 15
+nolto native compiled alloc 14.545454545454545 14.50909090909091 55
+nolto svm startup - 64 64
+nolto svm interp fib 117.5 118.25 8
+nolto svm interp tak 186. 186.8 5
+nolto svm interp nqueens 73.84615384615384 74. 13
+nolto svm interp bignum 17.36842105263158 17.403508771929825 57
+nolto svm interp flonum 690. 693. 1
+nolto svm interp string 3380. 3389. 1
+nolto svm interp list 1050. 1056. 1
+nolto svm interp vector 1600. 1606. 1
+nolto svm interp alloc 800. 800. 1
+nolto svm compile - 710. 708. 1
+nolto svm compiled fib 26.756756756756758 26.783783783783782 37
+nolto svm compiled tak 36.07142857142857 36.25 28
+nolto svm compiled nqueens 11.11111111111111 11.088888888888889 90
+nolto svm compiled bignum 15.46875 15.453125 64
+nolto svm compiled flonum 272.5 274.25 4
+nolto svm compiled string 3330. 3333. 1
+nolto svm compiled list 1030. 1033. 1
+nolto svm compiled vector 310. 311. 3
+nolto svm compiled alloc 156.66666666666666 156.5 6
+lto native startup - 12 12
+lto native interp fib 85.45454545454545 86. 11
+lto native interp tak 145.71428571428572 146. 7
+lto native interp nqueens 55. 55.05555555555556 18
+lto native interp bignum 17.719298245614034 17.68421052631579 57
+lto native interp flonum 430. 432.5 2
+lto native interp string 420. 423.5 2
+lto native interp list 184. 184.4 5
+lto native interp vector 1190. 1184. 1
+lto native interp alloc 605. 607. 2
+lto native compile - 33. 33. 30
+lto native compiled fib 1.1864406779661016 1.185230024213075 826
+lto native compiled tak 1.4017341040462428 1.4046242774566473 692
+lto native compiled nqueens .6030769230769231 .6055384615384616 1625
+lto native compiled bignum 15.46875 15.5 64
+lto native compiled flonum 20.638297872340427 20.74468085106383 47
+lto native compiled string 340. 341. 3
+lto native compiled list 156.66666666666666 157.33333333333334 6
+lto native compiled vector 61.875 61.8125 16
+lto native compiled alloc 14.347826086956522 14.391304347826088 69
+lto svm startup - 60 60
+lto svm interp fib 102. 102.4 10
+lto svm interp tak 161.66666666666666 161.5 6
+lto svm interp nqueens 63.125 63.5 16
+lto svm interp bignum 16.949152542372882 17.016949152542374 59
+lto svm interp flonum 600. 604.5 2
+lto svm interp string 3360. 3364. 1
+lto svm interp list 1040. 1038. 1
+lto svm interp vector 1390. 1384. 1
+lto svm interp alloc 670. 669. 2
+lto svm compile - 700. 694. 1
+lto svm compiled fib 26.486486486486488 26.7027027027027 37
+lto svm compiled tak 35.357142857142854 35.57142857142857 28
+lto svm compiled nqueens 10.87912087912088 10.934065934065934 91
+lto svm compiled bignum 15.625 15.703125 64
+lto svm compiled flonum 270. 269. 4
+lto svm compiled string 3200. 3195. 1
+lto svm compiled list 1020. 1015. 1
+lto svm compiled vector 303.3333333333333 304.3333333333333 3
+lto svm compiled alloc 151.66666666666666 152.5 6
+native startup over 60 interleaved samples
+  min    no LTO   16.5 ms   LTO   15.7 ms   1.05x
+  median no LTO   20.6 ms   LTO   20.2 ms   1.02x
+svm startup over 60 interleaved samples
+  min    no LTO   65.6 ms   LTO   62.9 ms   1.04x
+  median no LTO   67.6 ms   LTO   65.9 ms   1.03x
