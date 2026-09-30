@@ -34,7 +34,6 @@ USA.
 #include "ostty.h"
 #include "ostop.h"
 
-extern long OS_set_trap_state (long);
 extern double arg_flonum (int);
 
 /* Pretty random primitives */

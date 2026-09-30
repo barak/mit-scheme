@@ -29,6 +29,7 @@ USA.
 #define SCM_UXTRAP_H
 
 #include "os.h"
+#include "ostop.h"
 
 /* Machine/OS-dependent section (long) */
 
@@ -890,19 +891,7 @@ typedef struct
 
 /* Machine/OS-independent section */
 
-enum trap_state
-{
-  trap_state_trapped,
-  trap_state_exit,
-  trap_state_suspend,
-  trap_state_query,
-  trap_state_recover,
-  trap_state_exitting_soft,
-  trap_state_exitting_hard
-};
-
 extern void UX_initialize_trap_recovery (void);
-extern enum trap_state OS_set_trap_state (enum trap_state state);
 extern void hard_reset (SIGCONTEXT_T * scp);
 extern void soft_reset (void);
 extern void trap_handler

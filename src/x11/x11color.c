@@ -130,16 +130,16 @@ x_store_color (struct xcolormap * xcm,
 
 void
 x_store_colors (struct xcolormap * xcm,
-		unsigned int * color_vector,
-		unsigned int n_colors)
+		int * color_vector,
+		unsigned long n_colors)
 {
   XColor * colors = malloc (n_colors * (sizeof (XColor)));
-  unsigned int * vector_scan = color_vector;
+  int * vector_scan = color_vector;
   XColor * colors_scan = colors;
   XColor * colors_end = (colors + n_colors);
   while (colors_scan < colors_end)
     {
-      (colors_scan -> pixel) = (*vector_scan++);
+      (colors_scan -> pixel) = ((unsigned int) (*vector_scan++));
       (colors_scan -> flags) = 0;
       {
 	int red = *vector_scan++;

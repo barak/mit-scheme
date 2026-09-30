@@ -44,4 +44,17 @@ extern void OS_expect_sequential_access (void *start, void *end);
 extern void OS_expect_normal_access (void *start, void *end);
 extern void OS_free_pages (void *start, void *end);
 
+enum trap_state
+{
+  trap_state_trapped,
+  trap_state_exit,
+  trap_state_suspend,
+  trap_state_query,
+  trap_state_recover,
+  trap_state_exitting_soft,
+  trap_state_exitting_hard
+};
+
+extern enum trap_state OS_set_trap_state (enum trap_state state);
+
 #endif /* SCM_OSTOP_H */

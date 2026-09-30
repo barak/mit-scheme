@@ -28,17 +28,6 @@ USA.
 #ifndef SCM_NTTRAP_H
 #define SCM_NTTRAP_H
 
-enum trap_state
-{
-  trap_state_trapped,
-  trap_state_exit,
-  trap_state_suspend,
-  trap_state_query,
-  trap_state_recover,
-  trap_state_exitting_soft,
-  trap_state_exitting_hard
-};
-
-extern enum trap_state OS_set_trap_state (enum trap_state state);
+#include "ostop.h"
 
 #endif /* SCM_NTTRAP_H */
