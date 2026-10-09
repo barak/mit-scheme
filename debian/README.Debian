@@ -1,18 +1,19 @@
--*- Text -*-
+Crypto
+======
 
-This package is built with crypto support.  The interface to the
-crypto code is implemented using dynamically-loaded modules.  This
-allows scheme to be run even if the crypto libraries aren't available;
-in that case the crypto support is unavailable, but everything else
-should work.
+MD5, ChaCha and SHA-3 are built into the interpreter.  Blowfish is a
+plugin, loaded on demand:
 
-In order to build the package, it's preferable to have the following
-crypto libraries installed.  It's possible to build the package
-without these libraries, or with a subset of them, but in that case
-there won't be any crypto support in the resulting package.
+	(load-option 'blowfish)
 
-	libssl-dev
-	libmhash-dev
-	libmcrypt-dev
+All of these are upstream's own implementations; no external crypto
+library is used, at build time or at run time.
+
+Plugins
+=======
+
+Blowfish, GDBM, PostgreSQL and X11 support are built as plugins and
+dynamically loaded by load-option rather than linked into the
+interpreter.
 
 See debian/NOTES.md in the source package for build and porting notes.

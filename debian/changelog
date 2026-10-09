@@ -1,3 +1,12 @@
+mit-scheme (12.1-14) unstable; urgency=medium
+
+  * Drop unused build dependencies: libssl-dev, libmhash-dev,
+    libmcrypt-dev, libdb-dev, libltdl-dev, libxt-dev.
+  * Rewrite README.Debian, which still described the 7.7 crypto
+    arrangement.
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Fri, 09 Oct 2026 21:06:04 +0100
+
 mit-scheme (12.1-13) unstable; urgency=medium
 
   * Fix declaration mismatches detected by LTO (closes: #1149534)

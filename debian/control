@@ -7,11 +7,9 @@ Build-Depends: debhelper-compat (= 14),
 # native back-end (mit-scheme:arch binary package) in sid.
 		mit-scheme:native [amd64 arm64] | mit-scheme-svm:native [amd64 arm64],
 		mit-scheme-svm:native [!amd64 !arm64] | mit-scheme:native [!amd64 !arm64],
-		libssl-dev, libmhash-dev, libmcrypt-dev,
 		libgdbm-dev, libpq-dev,
 		libncurses-dev,
-		libx11-dev, libxt-dev,
-		libdb-dev, libltdl-dev,
+		libx11-dev,
 		pkgconf,
 		texinfo
 Build-Depends-Indep: texlive, texlive-plain-generic, ghostscript
