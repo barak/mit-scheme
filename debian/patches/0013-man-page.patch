@@ -1,6 +1,7 @@
 From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
 Date: Tue, 9 Jun 2020 11:44:33 +0100
 Subject: mit-scheme.1: escape literal hyphens
+
 Forwarded: yes
 
 In roff a bare "-" is a hyphen, which renders as an en dash in some

@@ -1,6 +1,7 @@
 From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
 Date: Mon, 28 Sep 2026 12:35:22 +0100
 Subject: uxtrap.c: cast sigcontext registers through uintptr_t
+
 Forwarded: yes
 
 On Linux the registers in a signal context are greg_t, which is 64-bit

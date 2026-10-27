@@ -1,6 +1,7 @@
 From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
 Date: Wed, 30 Sep 2026 17:01:36 +0100
 Subject: inconsistent declarations
+
 Forwarded: yes
 
 An LTO compile (link-time global optimization of C code) reveals three

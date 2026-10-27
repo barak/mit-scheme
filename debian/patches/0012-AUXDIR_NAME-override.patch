@@ -16,7 +16,7 @@ Forwarded: yes
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index c5ba6a3..8b09609 100644
+index c5ba6a3..63d33a9 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
 @@ -168,7 +168,7 @@ esac

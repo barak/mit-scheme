@@ -1,6 +1,7 @@
 From: "Barak A. Pearlmutter" <bap@debian.org>
 Date: Fri, 4 Sep 2026 12:00:00 +0000
 Subject: chacha.i rm _POSIX_C_SOURCE
+
 Bug-Debian: https://bugs.debian.org/1145694
 Applied-Upstream: f466e7252 (upstream hoists the definition into the .c files instead)
 

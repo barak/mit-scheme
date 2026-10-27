@@ -2,7 +2,6 @@ From: "Barak A. Pearlmutter" <barak+git@cs.nuim.ie>
 Date: Mon, 22 Jul 2013 19:58:13 +0200
 Subject: allow autoreconf force
 
-
 autoreconf --force in src/ regenerates configure without expanding
 MIT_SCHEME_NATIVE_CODE, and says nothing about it: no aclocal.m4 there,
 and nothing tells aclocal where the macro lives.

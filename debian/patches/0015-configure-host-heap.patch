@@ -12,7 +12,7 @@ Forwarded: yes
  1 file changed, 9 insertions(+), 6 deletions(-)
 
 diff --git a/src/configure.ac b/src/configure.ac
-index 8b09609..86948f1 100644
+index 63d33a9..f8b2fad 100644
 --- a/src/configure.ac
 +++ b/src/configure.ac
 @@ -269,12 +269,15 @@ directory, which is usually `/usr/local/lib/mit-scheme-${mit_scheme_native_code}
