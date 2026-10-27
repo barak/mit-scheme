@@ -26,3 +26,4 @@
 0026-array-bounds-not-fatal.patch
 0027-uxtrap-sigcontext-uintptr.patch
 0028-lto-type-mismatch.patch
+0029-pkg-config-cross-build.patch

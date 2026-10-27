@@ -1,3 +1,9 @@
+mit-scheme (12.1-15) unstable; urgency=medium
+
+  * Cross build dpkg-config patch (closes: #1152223)
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Tue, 27 Oct 2026 15:21:54 +0000
+
 mit-scheme (12.1-14) unstable; urgency=medium
 
   * Drop unused build dependencies: libssl-dev, libmhash-dev,

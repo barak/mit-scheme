@@ -1,0 +1,32 @@
+From: "Barak A. Pearlmutter" <barak+git@pearlmutter.net>
+Date: Tue, 27 Oct 2026 09:29:06 +0000
+Subject: pkg-config cross build
+
+Fails to cross build from source as it uses the build architecture
+pkg-config (hard coded) to locate the PostgreSQL library. This patch
+makes it use the correct pkg-config.
+
+This just fixes the first trivial cross build issue, which the Debian
+QA tools notice. After this, "illegal instruction".
+
+See https://bugs.debian.org/1152223
+---
+ src/pgsql/configure.ac | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/pgsql/configure.ac b/src/pgsql/configure.ac
+index 602d4d1..aed744a 100644
+--- a/src/pgsql/configure.ac
++++ b/src/pgsql/configure.ac
+@@ -101,9 +101,9 @@ if test ${GCC} = yes; then
+ 	[AC_MSG_RESULT([no])])
+ fi
+ 
+-AC_CHECK_PROG([PKG_CONFIG], [pkg-config], [yes])
++PKG_PROG_PKG_CONFIG
+ 
+-if ! pkg-config --exists libpq 2>/dev/null; then
++if ! "$PKG_CONFIG" --exists libpq 2>/dev/null; then
+     AC_MSG_ERROR([PostgreSQL not found.])
+ fi
+ 
