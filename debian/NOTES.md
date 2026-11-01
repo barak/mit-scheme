@@ -101,8 +101,13 @@ There are two ways around this.
 The SVM executes bytecode rather than machine code, so a saved band is
 portable between machines that agree about object representation,
 while the microcode that runs it is C and is compiled from this
-package's own source. The `debian-bootstrap` branch carries such
-libraries in `debian/prebuilt/svm1-<bits><endian>/`.
+package's own source. During porting to a new architecture, or while
+making updates that cannot bootstrap using a previous version, a
+temporary git branch is sometimes used: branch `debian-bootstrap`
+holds prebuilt bands in `debian/prebuilt/svm1-<bits><endian>/`, and
+sometimes precompiled scheme source files, as needed. To avoid
+polluting the repository with too much binary garbage, the branch is
+deleted when no longer useful.
 
 **Portable across what, exactly.** Not simply word size and byte
 order. `src/microcode/object.h` branches on `HEAP_IN_LOW_MEMORY`,
